@@ -929,7 +929,7 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model1 = model1[chans_ind]
 
-				redchisq1 = round(red_chisq(chans_spec, chans_model1, err=rms, 
+				redchisq1 = round(red_chisq(chans_spec, chans_model1, err=errs1, 
 					free_params=free_params),3)
 				
 				# option to print out fits
@@ -979,6 +979,7 @@ def FitRoutine(FittingInfo, cube):
 										for q in range(len(limits2))]
 				
 				
+				
 				# if the model is nan, then we skip the pixel and update the progressbar and count
 				if np.isfinite(total_guesses2[1]) == False:
 					pbar.update(1)
@@ -1010,6 +1011,9 @@ def FitRoutine(FittingInfo, cube):
 												tied = ties2,
 												annotate = False)
 						spec2.measure(fluxnorm = fluxnorm)
+
+				# get errors for the reduced chi square
+				errs2 = compute_rms(spec_axis, spectrum, continuum_limits[0], continuum_limits[1])
 				
 				# get the fit params
 				amps2_list = []
@@ -1043,7 +1047,7 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model2 = model2[chans_ind]
 
-				redchisq2 = round(red_chisq(chans_spec, chans_model2, err=rms, 
+				redchisq2 = round(red_chisq(chans_spec, chans_model2, err=errs2, 
 					free_params=free_params),3)
 				
 
@@ -1161,7 +1165,7 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model3 = model3[chans_ind]
 
-				redchisq3 = round(red_chisq(chans_spec, chans_model3, err=rms, 
+				redchisq3 = round(red_chisq(chans_spec, chans_model3, err=errs3, 
 					free_params=free_params),3)
 				
 				# option to print out fits
