@@ -35,11 +35,14 @@ plt.rcParams["font.weight"] = 'bold'
 # define our rest wavelengths for the NII doublet, H-alpha, and the SII doublet
 restwls = [6548.05, 6562.801, 6583.45, 6716.44, 6730.82]
 Vsys = 243. # km/s
-savepath = '../ngc253/June21/fits3_total/'
+savepath = '../ngc253/muse/2024July2/fits3_total/'
+which_cube = 'se'
 reorder = True
 vels = True
-errs = True
-flux = True
+rms = True
+BIC = True
+# errs = True
+# flux = True
 
 if reorder == True:
     # reorder the components for both the parameter file and the error file
@@ -54,12 +57,15 @@ if vels == True:
                     err_outfile='%sfits3_err_reordered.txt' % savepath,
                     restwls=restwls, Vsys=Vsys, i=78.)
     
-if errs == True:
+if rms == True:
     # get the true errors by multiplying the errors by the rms per pixel
-    true_errors(infile='%sfits3_reordered.txt' % savepath,
+    add_rms(which_cube=which_cube, infile='%sfits3_reordered.txt' % savepath,
                     err_infile='%sfits3_err_reordered.txt' % savepath,
                     outfile='%sfits3_reordered.txt' % savepath, 
                     err_outfile='%sfits3_err_reordered.txt' % savepath)
+    
+if BIC == True:
+    _ = calc_BIC(infile='%sfits3_reordered.txt' % savepath, num_obs=150, free_params=18)
 
 # if flux == True:
 #     # read in the reordered file

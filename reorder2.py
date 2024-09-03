@@ -69,7 +69,7 @@ def reorder_components2(infile, outfile, infile_err, outfile_err):
 		sigs_params = [sigs_arr[pix][i] for i in sort_index[pix]]
 		ordered_params2 = amps_params + wvl_params + sigs_params  # all sorted params
 
-		# write to a file (saves a TON of time rather than saving to memory)
+		# write to a file
 		f2.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n' %
@@ -112,17 +112,26 @@ def reorder_components2(infile, outfile, infile_err, outfile_err):
 		sigs_params = [sigs_arr[pix][i] for i in sort_index[pix]]
 		ordered_params2 = amps_params + wvl_params + sigs_params  # all sorted errors on params
 
-		# write to a file (saves a TON of time rather than saving to memory)
+		# write to a file
+		# unfortunately, pyspeckit set the errors of tied parameters to 0
+		# we need to have those parameters inherit the error of the parameter they're tied to
+		wvl_errb = ordered_params2[7]
+		sig_errb = ordered_params2[8]
+		nii_amp_errb = ordered_params2[0]
+		wvl_errR = ordered_params2[10]
+		sig_errR = ordered_params2[11]
+		nii_amp_errR = ordered_params2[3]
+
 		e2.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n' %
 				 (fits2_err['X'][pix], fits2_err['Y'][pix], fits2_err['RedChiSq'][pix],
-				ordered_params2[0], ordered_params2[1], ordered_params2[2], ordered_params2[3], ordered_params2[4],
-				 ordered_params2[5], ordered_params2[6], ordered_params2[7], ordered_params2[8], ordered_params2[9],
-				 ordered_params2[10], ordered_params2[11], ordered_params2[12], ordered_params2[13], ordered_params2[14],
-				 ordered_params2[15], ordered_params2[16], ordered_params2[17], ordered_params2[18], ordered_params2[19],
-				 ordered_params2[20], ordered_params2[21], ordered_params2[22], ordered_params2[23], ordered_params2[24],
-				 ordered_params2[25], ordered_params2[26], ordered_params2[27], ordered_params2[28], ordered_params2[29]))
+				nii_amp_errb, wvl_errb, sig_errb, nii_amp_errR, wvl_errR,
+				 sig_errR, ordered_params2[6], wvl_errb, sig_errb, ordered_params2[9],
+				 wvl_errR, sig_errR, nii_amp_errb, wvl_errb, sig_errb,
+				 nii_amp_errR, wvl_errR, sig_errR, ordered_params2[18], wvl_errb,
+				 sig_errb, ordered_params2[21], wvl_errR, sig_errR, ordered_params2[24],
+				 wvl_errb, sig_errb, ordered_params2[27], wvl_errR, sig_errR))
 
 	e2.close()
 
@@ -143,16 +152,16 @@ def add_velocities2(infile, err_infile, outfile, err_outfile, restwls, Vsys, i):
 	err = pd.read_csv(err_infile, delimiter=',', index_col=False)
 
 	# make velocity columns, accounting for inclination of the disk
-	outputs_ordered['Vel1'] = wavelength_to_velocity(outputs_ordered['Wvl1'], Vsys, restwls[0]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel2'] = wavelength_to_velocity(outputs_ordered['Wvl2'], Vsys, restwls[0]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel3'] = wavelength_to_velocity(outputs_ordered['Wvl3'], Vsys, restwls[1]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel4'] = wavelength_to_velocity(outputs_ordered['Wvl4'], Vsys, restwls[1]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel5'] = wavelength_to_velocity(outputs_ordered['Wvl5'], Vsys, restwls[2]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel6'] = wavelength_to_velocity(outputs_ordered['Wvl6'], Vsys, restwls[2]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel7'] = wavelength_to_velocity(outputs_ordered['Wvl7'], Vsys, restwls[3]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel8'] = wavelength_to_velocity(outputs_ordered['Wvl8'], Vsys, restwls[3]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel9'] = wavelength_to_velocity(outputs_ordered['Wvl9'], Vsys, restwls[4]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel10'] = wavelength_to_velocity(outputs_ordered['Wvl10'], Vsys, restwls[4]) / np.sin(i*np.pi/180)
+	outputs_ordered['Vel1'] = wavelength_to_velocity(outputs_ordered['Wvl1'], Vsys, restwls[0])
+	outputs_ordered['Vel2'] = wavelength_to_velocity(outputs_ordered['Wvl2'], Vsys, restwls[0])
+	outputs_ordered['Vel3'] = wavelength_to_velocity(outputs_ordered['Wvl3'], Vsys, restwls[1])
+	outputs_ordered['Vel4'] = wavelength_to_velocity(outputs_ordered['Wvl4'], Vsys, restwls[1])
+	outputs_ordered['Vel5'] = wavelength_to_velocity(outputs_ordered['Wvl5'], Vsys, restwls[2])
+	outputs_ordered['Vel6'] = wavelength_to_velocity(outputs_ordered['Wvl6'], Vsys, restwls[2])
+	outputs_ordered['Vel7'] = wavelength_to_velocity(outputs_ordered['Wvl7'], Vsys, restwls[3])
+	outputs_ordered['Vel8'] = wavelength_to_velocity(outputs_ordered['Wvl8'], Vsys, restwls[3])
+	outputs_ordered['Vel9'] = wavelength_to_velocity(outputs_ordered['Wvl9'], Vsys, restwls[4])
+	outputs_ordered['Vel10'] = wavelength_to_velocity(outputs_ordered['Wvl10'], Vsys, restwls[4])
 
 	# make columns for sigma in velocity space
 	outputs_ordered['SigVel1'] = (3*10**5 * outputs_ordered['Sig1']) / restwls[0]
@@ -200,16 +209,17 @@ def add_velocities2(infile, err_infile, outfile, err_outfile, restwls, Vsys, i):
 	
 	return
 
-
-def true_errors(infile, err_infile, outfile, err_outfile):
+def add_rms(which_cube, infile, err_infile, outfile, err_outfile):
 	"""
-	This function calculates the true errors by multiplying what we get from
-	the fitting program by the rms of the cube.
+	This function calculates the rms.
 	"""
 
-	print('Calculating true errors....')
+	print('Calculating rms....')
 
-	filename = '../ngc253/data/ADP.2018-11-22T21_29_46.157.fits'
+	if which_cube == 'se':
+		filename = '../ngc253/muse/data/ADP.2018-11-22T21_29_46.157.fits'
+	elif which_cube == 'nw':
+		filename = '../ngc253/muse/data/ADP.2019-08-24T09_53_08.548.fits'
 	infile = pd.read_csv(infile, delimiter=',', index_col=False)
 	err_infile = pd.read_csv(err_infile, delimiter=',', index_col=False)
 
@@ -243,12 +253,7 @@ def true_errors(infile, err_infile, outfile, err_outfile):
 
 	# add the rms to the parameter file and error file
 	infile['rms'] = rms_list
-	err_infile['rms'] = rms_list
-
-	# multiply the errors by the rms
-	err_infile.iloc[:,3:-1].multiply(err_infile['rms'], axis="index")
-
-	# err_infile.iloc[:,3:-1] = err_infile.iloc[:,3:-1]*rms_list
+	err_infile['rms'] = rms_list 
 
 	# save to file
 	err_infile.to_csv(err_outfile, index=False)
@@ -256,49 +261,123 @@ def true_errors(infile, err_infile, outfile, err_outfile):
 
 	return
 
-
-
-def flux_map2(og, infile, outfile1, outfile2, line):
+def calc_BIC(infile, num_obs, free_params):
+    
+	print('Calculating the BIC values....')
 	
-	"""
-	This function creates intensity maps for each line in each fit. It produces two maps:
-	one for the blueshifted component and the other for the redshifted component.
-	"""
-
-	# read in original data
-	hdu = fits.open(og)[1]
-	og_data = hdu.data
-	y, x = og_data[1].shape
+	fits = pd.read_csv(infile)
+	DOF = num_obs - free_params  # number of observed points - free parameters
+	chisq = fits['RedChiSq'] * DOF
+	BIC = chisq + free_params*np.log(num_obs)
+	fits['BIC'] = BIC
+	fits.to_csv(infile, index=False)
 	
-	# use the original data to create the dimensions
-	# of the flux maps
-	mapp_blue = np.zeros((y, x))
-	mapp_red = np.zeros((y, x))
+	return fits
 
-	# read in fit data
-	fits2 = pd.read_csv(infile)
 
-	# generate the flux map(s)
-	if line == 'Halpha':
-		print('Generating flux map for H-alpha....')
-		for index, row in tqdm(fits2.iterrows()):
-				mapp_blue[int(row['Y']),int(row['X'])] = row['Amp3']
-				mapp_red[int(row['Y']),int(row['X'])] = row['Amp4']
 
-	if line == 'NIIb':
-		print('Generating flux map for NIIb....')
-		for index, row in tqdm(fits2.iterrows()):
-				mapp_blue[int(row['Y']),int(row['X'])] = row['Amp5']
-				mapp_red[int(row['Y']),int(row['X'])] = row['Amp6']
+# def true_errors(which_cube, infile, err_infile, outfile, err_outfile):
+# 	"""
+# 	This function calculates the true errors by multiplying what we get from
+# 	the fitting program by the rms of the cube.
+# 	"""
 
-	# blank out the edges using the original data
-	mapp_blue[np.isnan(og_data[1])] = np.nan # [0] has some nans within
-	mapp_red[np.isnan(og_data[1])] = np.nan # [0] has some nans within
+# 	print('Calculating true errors....')
 
-	# create fits files to store maps
-	hdu_b = fits.PrimaryHDU(mapp_blue)
-	hdu_r = fits.PrimaryHDU(mapp_red)   
-	hdu_b.writeto(outfile1, overwrite=True)
-	hdu_r.writeto(outfile2, overwrite=True)
+# 	if which_cube == 'se':
+# 		filename = '../ngc253/muse/data/ADP.2018-11-22T21_29_46.157.fits'
+# 	elif which_cube == 'nw':
+# 		filename = '../ngc253/muse/data/ADP.2019-08-24T09_53_08.548.fits'
+
+# 	infile = pd.read_csv(infile, delimiter=',', index_col=False)
+# 	err_infile = pd.read_csv(err_infile, delimiter=',', index_col=False)
+
+# 	# info for continuum
+# 	SlabLower = 6500
+# 	SlabUpper = 6800
+# 	ContUpper1 = 6620
+# 	ContLower1 = 6525
+# 	ContUpper2 = 6750
+# 	ContLower2 = 6700
+
+# 	cube = CreateCube(filename, SlabLower, SlabUpper, ContLower1, ContUpper1,
+# 					ContLower2, ContUpper2)
+
+# 	z, y, x = cube.shape
+
+# 	minval = min(np.array(cube.spectral_axis))
+# 	maxval = max(np.array(cube.spectral_axis))
+
+# 	rms_list = []
+
+# 	for index, row in tqdm(infile.iterrows()):
+
+# 		i = int(row['X'])
+# 		j = int(row['Y'])
+
+# 		spectrum = np.array(cube[:,j,i], dtype='float64')
+# 		x_axis = np.linspace(minval, maxval, len(spectrum))
+# 		rms = compute_rms(x_axis, spectrum, ContLower1, ContUpper2)
+# 		rms_list.append(rms)
+
+# 	# add the rms to the parameter file and error file
+# 	infile['rms'] = rms_list
+# 	err_infile['rms'] = rms_list
+
+# 	# multiply the errors by the rms
+# 	#err_infile.iloc[:,3:-1].multiply(err_infile['rms'], axis="index")
+
+# 	#err_infile.iloc[:,3:-1] = err_infile.iloc[:,3:-1]*rms_list
+
+# 	# save to file
+# 	err_infile.to_csv(err_outfile, index=False)
+# 	infile.to_csv(outfile, index=False)
+
+# 	return
+
+
+
+# def flux_map2(og, infile, outfile1, outfile2, line):
+	
+# 	"""
+# 	This function creates intensity maps for each line in each fit. It produces two maps:
+# 	one for the blueshifted component and the other for the redshifted component.
+# 	"""
+
+# 	# read in original data
+# 	hdu = fits.open(og)[1]
+# 	og_data = hdu.data
+# 	y, x = og_data[1].shape
+	
+# 	# use the original data to create the dimensions
+# 	# of the flux maps
+# 	mapp_blue = np.zeros((y, x))
+# 	mapp_red = np.zeros((y, x))
+
+# 	# read in fit data
+# 	fits2 = pd.read_csv(infile)
+
+# 	# generate the flux map(s)
+# 	if line == 'Halpha':
+# 		print('Generating flux map for H-alpha....')
+# 		for index, row in tqdm(fits2.iterrows()):
+# 				mapp_blue[int(row['Y']),int(row['X'])] = row['Amp3']
+# 				mapp_red[int(row['Y']),int(row['X'])] = row['Amp4']
+
+# 	if line == 'NIIb':
+# 		print('Generating flux map for NIIb....')
+# 		for index, row in tqdm(fits2.iterrows()):
+# 				mapp_blue[int(row['Y']),int(row['X'])] = row['Amp5']
+# 				mapp_red[int(row['Y']),int(row['X'])] = row['Amp6']
+
+# 	# blank out the edges using the original data
+# 	mapp_blue[np.isnan(og_data[1])] = np.nan # [0] has some nans within
+# 	mapp_red[np.isnan(og_data[1])] = np.nan # [0] has some nans within
+
+# 	# create fits files to store maps
+# 	hdu_b = fits.PrimaryHDU(mapp_blue)
+# 	hdu_r = fits.PrimaryHDU(mapp_red)   
+# 	hdu_b.writeto(outfile1, overwrite=True)
+# 	hdu_r.writeto(outfile2, overwrite=True)
 		
 	return

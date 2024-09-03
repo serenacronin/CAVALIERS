@@ -26,7 +26,7 @@ plt.rcParams["font.weight"] = 'bold'
 R = 2989
 run_BIC = False
 visual_BIC = False
-dBIC_thresh = -50
+dBIC_thresh = -1
 dBIC_vmin = -200
 dBIC_vmax = -10
 comparison = True
@@ -362,12 +362,12 @@ if comparison == True:
         bar.ax.tick_params(width=2.5, labelsize=16, length=7, direction='in')
         ax.set_xticks([])
         ax.set_yticks([])
-        plt.savefig('%sBIC_PHYS_50.png' % savepath, dpi=200)
+        plt.savefig('%sBIC_PHYS_1.png' % savepath, dpi=200)
         plt.close()
 
         # save as a fits file
         hdu = fits.PrimaryHDU(BIC_PHYS)
-        hdu.writeto('%sBIC_PHYS_50.fits' % savepath, overwrite=True)
+        hdu.writeto('%sBIC_PHYS_1.fits' % savepath, overwrite=True)
 
     elif compare_ratio == True:
 
@@ -387,10 +387,10 @@ if comparison == True:
         bar.ax.tick_params(width=2.5, labelsize=16, length=7, direction='in')
         ax.set_xticks([])
         ax.set_yticks([])
-        plt.savefig('%sBIC_PHYS_50.png' % savepath, dpi=200)
+        plt.savefig('%sBIC_PHYS_1.png' % savepath, dpi=200)
         plt.close()
 
         # save as a fits file
         hdu = fits.PrimaryHDU(BIC_PHYS)
-        hdu.writeto('%sBIC_PHYS_50.fits' % savepath, overwrite=True)
+        hdu.writeto('%sBIC_PHYS_1.fits' % savepath, overwrite=True)
         

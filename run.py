@@ -15,6 +15,8 @@ It calls functions from routine.py and passes in initial guesses.
 
 # import functions
 from routine import CreateCube, InputParams, FitRoutine, optical_vel_to_ang
+from astropy import units as u
+from spectral_cube import SpectralCube
 import time
 from astropy.io import fits
 import warnings
@@ -25,13 +27,13 @@ warnings.filterwarnings("ignore")
 # VARIABLES TO CHANGE TO RUN DIFFERENT MODELS ON DIFFERENT REGIONS OF THE DATACUBE
 # ============================================================================================================
 
-fit1 = False  # set to True when you want to run the one system of lines fit
+fit1 = True  # set to True when you want to run the one system of lines fit
 fit2 = False  # two systems of lines fit
-fit3 = True  # three systems of lines
-subcube = False  # do you want to work with a small region of the cube?
+fit3 = False  # three systems of lines
+subcube = True  # do you want to work with a small region of the cube?
 
-savepath = '../ngc253/Aug10/'
-save_fits_num = 100
+savepath = '../ngc253/muse/2024July2/test_fits1_weird/'
+save_fits_num = 1
 
 # ============================================================================================================ 
 # DEFINE OTHER VARIABLES
@@ -43,8 +45,12 @@ c = 3*10**5  # speed of light in km/s
 fluxnorm = 1e-20  # value that the y-axis is normalized to; taken from datacube header
 
 # file names
-filename = '../ngc253/data/ADP.2018-11-22T21_29_46.157.fits'
-vel_model = '../ngc253/data/ngc253_se_halpha_vel_model_smooth_FINAL.fits'
+filename = '../ngc253/muse/data/NGC253_MUSE_SE_Fitted.fits'
+# vel_model = '../ngc253/data/ngc253_se_halpha_vel_model_smooth_FINAL.fits'
+# vel_model = '../ngc253/data/ngc253_se_halpha_vel_model_avg_CO_smooth.fits'
+# vel_model = '../ngc253/data/Krieger19_CO_velocity_ngc253_vsys_barycentric.fits'
+# vel_model = '../ngc253/data/ngc253_se_halpha_vel_model_smooth_plus60.fits'
+vel_model = '../ngc253/muse/data/ngc253_se_halpha_vel_model_smooth_replaceCO_andsmooth.fits'
 
 # info for continuum
 SlabLower = 6500
@@ -69,9 +75,10 @@ modelcube = fits.open(vel_model)  # open the velocity model for the disk
 modelcubedat = modelcube[0].data  # grab the data from the velocity model
 
 if subcube == True:
-    x1, x2 = 164, 166
-    y1, y2 = 359, 361
-    vels = modelcubedat[x1:x2, y1:y2]  # slice the velocity model to focus on a subcube/subregion
+    x1, x2 = 301-2, 301+2
+    y1, y2 = 299-2, 299+2
+    # vels = modelcubedat[x1:x2, y1:y2]  # slice the velocity model to focus on a subcube/subregion
+    vels = modelcubedat[y1:y2, x1:x2]  # slice the velocity model to focus on a subcube/subregion
 else:
 	vels = modelcubedat
 vels_disk = [optical_vel_to_ang(vels, Vsys, restwl) for restwl in restwls]  # convert from velocity to wavelength
@@ -177,11 +184,14 @@ else:
 if __name__ == '__main__':
     
     # make the cube
-    cube = CreateCube(filename, SlabLower, SlabUpper, ContLower1, ContUpper1, ContLower2, ContUpper2)
+    # cube = CreateCube(filename, SlabLower, SlabUpper, ContLower1, ContUpper1, ContLower2, ContUpper2)
+    
+    cube = SpectralCube.read(filename, hdu=1).spectral_slab(SlabLower * u.AA, 
+																SlabUpper * u.AA)
+    
     if subcube == True:
          cube = cube[:,y1:y2, x1:x2]  # slicing is in the format of z, y, x
 
-    print(cube)
 	
     FittingInfo = InputParams(fit1, fit2, fit3, R, free_params, 
                             continuum_limits=[ContLower1, ContUpper2], fluxnorm=fluxnorm,

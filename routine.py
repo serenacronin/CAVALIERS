@@ -9,7 +9,7 @@ Created on Fri Jan 13 10:16:16 2023
 Author: Serena A. Cronin
 
 This script is simultaneously fits one, two, and three systems of lines
-to each spectrum in an IFU datacube. Each component is modeled as a Gaussian.
+to each spectrum in an IFU data cube. Each component is modeled as a Gaussian.
 ========================================================================================
 """
 
@@ -153,6 +153,7 @@ def CreateCube(filename, SlabLower, SlabUpper, ContLower1, ContUpper1,
 	med = masked_cube.median(axis=0)
 	med_cube = cube - med
 	cube_final = med_cube.spectral_slab(SlabLower*u.AA, SlabUpper*u.AA)
+
 	return cube_final
 
 
@@ -315,8 +316,8 @@ def InputParams(fit1, fit2, fit3, R, free_params, continuum_limits, fluxnorm,
 
 	# do we want a fit where there is only one system of lines?
 	if fit1 == True:
-		centers1_arr = np.array(centers1)
-		widths1_arr = (centers1_arr/float(R))/2.355
+		centers1_arr = np.round(np.array(centers1),3)
+		widths1_arr = np.round((centers1_arr/float(R))/2.355,3)
 		widths1_lower_lim = np.median(widths1_arr[np.isfinite(widths1_arr)])
 		widths1_upper_lim  = widths1_lower_lim*5
 		widths1_guess = widths1_lower_lim*3
@@ -352,8 +353,8 @@ def InputParams(fit1, fit2, fit3, R, free_params, continuum_limits, fluxnorm,
 		
 		# have to do some extra finagling since part of the list
 		# is just a number, and the other part is a numpy array
-		centers2_arr = np.array(centers2)
-		widths2_arr = (centers2_arr/float(R))/2.355
+		centers2_arr = np.round(np.array(centers2),3)
+		widths2_arr = np.round((centers2_arr/float(R))/2.355,3)
 		widths2_lower_lim = [np.median(widths2_arr[i][np.isfinite(widths2_arr[i])])
 		        			for i in range(len(widths2_arr))
 							if type(widths2_arr[i]) == np.ndarray]
@@ -392,8 +393,8 @@ def InputParams(fit1, fit2, fit3, R, free_params, continuum_limits, fluxnorm,
 	# same steps as above
 	if fit3 == True:
 		
-		centers3_arr = np.array(centers3)
-		widths3_arr = (centers3_arr/float(R))/2.355
+		centers3_arr = np.round(np.array(centers3),3)
+		widths3_arr = np.round((centers3_arr/float(R))/2.355,3)
 		widths3_lower_lim = [np.median(widths3_arr[i][np.isfinite(widths3_arr[i])])
 		        			for i in range(len(widths3_arr))
 							if type(widths3_arr[i]) == np.ndarray]
@@ -466,7 +467,6 @@ def compute_rms(spec_axis, spectrum, ContLower, ContUpper):
 	"""
 	
 	# blank out the emission lines to get the continuum
-	
 	cont_channels = np.where((spec_axis > ContUpper) |
 					 (spec_axis < ContLower))
 	
@@ -757,7 +757,7 @@ def FitRoutine(FittingInfo, cube):
 			os.remove("%sfits1_err.txt" % savepath)
 
 		e1 = open("%sfits1_err.txt" % savepath, "w")
-		e1.write('X,Y,RedChiSq,RedChiSqErr')
+		e1.write('X,Y,RedChiSq,RedChiSqErr,')
 		e1.write('Amp1,Amp2,Amp3,Amp4,Amp5,')
 		e1.write('Wvl1,Wvl2,Wvl3,Wvl4,Wvl5,')
 		e1.write('Sig1,Sig2,Sig3,Sig4,Sig5\n')
@@ -814,12 +814,19 @@ def FitRoutine(FittingInfo, cube):
 	_, y, x = cube.shape
 
 	# set up a progress bar and a count of the pixels
-	pbar = tqdm(total=x*y, desc='Running fitting routine...')
+	pbar = tqdm(total=(x)*(y), desc='Running fitting routine...')
 	count = 0
 
 	# loop over each pixel and run the fitting routine!
-	for i in np.arange(x): # x-axis 
+	for i in np.arange(x): # x-axis
+
 		for j in np.arange(y): # y-axis
+
+			# # FIXME: debugging why it craps out after this pixel
+			# if (i < 310) & (j < 106):
+			# 	pbar.update(1)  
+			# 	count+=1
+			# 	continue
 
 			spectrum = np.array(cube[:,j,i], dtype='float64')  # grab the spectrum
 						
@@ -833,20 +840,25 @@ def FitRoutine(FittingInfo, cube):
 			minval = min(np.array(cube.spectral_axis))
 			maxval = max(np.array(cube.spectral_axis))
 			spec_axis = np.linspace(minval, maxval, len(spectrum))
-				
+
+			# get errors on the spectrum for the reduced chi square
+			rms = compute_rms(spec_axis, spectrum, continuum_limits[0], continuum_limits[1])
+			# print(np.ones_like(spec_axis)*rms)
 			
 			# ============================================================================================================ 
 			# ONE SYSTEM OF LINES
 			# ============================================================================================================
 			if fit1 == True:
 
-				spec1 = pyspeckit.Spectrum(data=spectrum, xarr=spec_axis) # grab the spectrum
+				# create a spectrum object
+				spec1 = pyspeckit.Spectrum(data=spectrum, xarr=spec_axis, error=np.ones_like(spec_axis)*rms)
 
 				# grab specific pixel value from the array
 				total_guesses1 = [guesses1[q][j,i] 
 									if type(guesses1[q]) == np.ndarray 
 									else guesses1[q]
 									for q in range(len(guesses1))]
+		
 				
 				total_limits1 = [(limits1[q][0][j,i], limits1[q][1][j,i]) 
 								if type(limits1[q][0]) == np.ndarray 
@@ -867,21 +879,35 @@ def FitRoutine(FittingInfo, cube):
 										tied = ties1,
 										annotate = False)
 				spec1.measure(fluxnorm = fluxnorm)
+
+				if spec1.specfit.parinfo.errors[0] == None:
+						total_guesses1 = params1  # params from previous fits
+
+						spec1.specfit.multifit(fittype='gaussian',
+												guesses = total_guesses1, 
+												limits = total_limits1,
+												limited = limited1,
+												tied = ties1,
+												annotate = False)
+						spec1.measure(fluxnorm = fluxnorm)
 				
-				# get errors on the spectrum for the reduced chi square
-				errs1 = compute_rms(spec_axis, spec1, continuum_limits[0], continuum_limits[1])
 
 				# get fit params
 				amps1_list = []
 				centers1_list = []
 				widths1_list = []
 				for line in spec1.measurements.lines.keys():
-					amps1_list.append(round(spec1.measurements.lines[line]['amp']/(fluxnorm), 4)) #TODO: GENERALIZE
-					centers1_list.append(round(spec1.measurements.lines[line]['pos'], 4))
-					widths1_list.append(round(spec1.measurements.lines[line]['fwhm']/2.355,4))
+					amps1_list.append(round(spec1.measurements.lines[line]['amp']/(fluxnorm), 3)) #TODO: GENERALIZE
+					centers1_list.append(round(spec1.measurements.lines[line]['pos'], 3))
+					widths1_list.append(round(spec1.measurements.lines[line]['fwhm']/2.355,3))
 
 				# grab the error on each parameter
-				err_params1 = [round(e,4) for e in spec1.specfit.parinfo.errors]
+				err_params1 = [round(e,3) for e in spec1.specfit.parinfo.errors]
+
+				# pyspeckit is being silly and setting the errors of tied parametes to 0
+				
+
+				# print(spec1.specfit.parinfo.errors)
 
 				# save the parameters to a list
 				params1 = [par for sublist in zip(amps1_list, centers1_list, widths1_list)
@@ -903,8 +929,8 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model1 = model1[chans_ind]
 
-				redchisq1 = round(red_chisq(chans_spec, chans_model1, err=errs1, 
-					free_params=free_params),4)
+				redchisq1 = round(red_chisq(chans_spec, chans_model1, err=rms, 
+					free_params=free_params),3)
 				
 				# option to print out fits
 				if (save_fits != False) & (count % save_fits == 0):						
@@ -928,7 +954,7 @@ def FitRoutine(FittingInfo, cube):
 				with open("%sfits1_err.txt" % savepath, "a") as e1:
 					e1.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 	      					'%s, %s, %s, %s, %s, %s\n' %
-							(i, j, redchisq1, errs1,
+							(i, j, redchisq1, rms,
 							err_params1[0], err_params1[3], err_params1[6], err_params1[9], err_params1[12],
 	     					err_params1[1], err_params1[4], err_params1[7], err_params1[10], err_params1[13],
 						    err_params1[2], err_params1[5], err_params1[8], err_params1[11], err_params1[14]))
@@ -952,15 +978,15 @@ def FitRoutine(FittingInfo, cube):
 										else limits2[q] 
 										for q in range(len(limits2))]
 				
+				
 				# if the model is nan, then we skip the pixel and update the progressbar and count
 				if np.isfinite(total_guesses2[1]) == False:
 					pbar.update(1)
 					count+=1
 					continue
 
-				# grab the spectrum
-				spec2 = pyspeckit.Spectrum(data=spectrum, xarr=np.linspace(minval, maxval, 
-											len(spectrum)))
+				# create a spectrum object
+				spec2 = pyspeckit.Spectrum(data=spectrum, xarr=spec_axis, error=np.ones_like(spec_axis)*rms)
 
 				# perform the fit
 				spec2.specfit.multifit(fittype='gaussian',
@@ -970,21 +996,32 @@ def FitRoutine(FittingInfo, cube):
 										tied = ties2,
 										annotate = False)
 				spec2.measure(fluxnorm = fluxnorm)
-				
-				# get errors for the reduced chi square
-				errs2 = compute_rms(spec_axis, spec2, continuum_limits[0], continuum_limits[1])
+
+				# hacky check if the fits even worked! if not, let's run with the answer of nearest neighbor
+				# this manifests as None types in the errors list
+				# for whatever reason idk
+				if spec2.specfit.parinfo.errors[0] == None:
+						total_guesses2 = params2  # params from previous fits
+
+						spec2.specfit.multifit(fittype='gaussian',
+												guesses = total_guesses2, 
+												limits = total_limits2,
+												limited = limited2,
+												tied = ties2,
+												annotate = False)
+						spec2.measure(fluxnorm = fluxnorm)
 				
 				# get the fit params
 				amps2_list = []
 				centers2_list = []
 				widths2_list = []
 				for line in spec2.measurements.lines.keys():
-					amps2_list.append(round(spec2.measurements.lines[line]['amp']/(fluxnorm),4))
-					centers2_list.append(round(spec2.measurements.lines[line]['pos'],4))
-					widths2_list.append(round(spec2.measurements.lines[line]['fwhm']/2.355,4))
+					amps2_list.append(round(spec2.measurements.lines[line]['amp']/(fluxnorm),3))
+					centers2_list.append(round(spec2.measurements.lines[line]['pos'],3))
+					widths2_list.append(round(spec2.measurements.lines[line]['fwhm']/2.355,3))
 
 				# grab the error on each parameter
-				err_params2 = [round(e,4) for e in spec2.specfit.parinfo.errors]
+				err_params2 = [round(e,3) for e in spec2.specfit.parinfo.errors]
 
 				# save all of the parameters to a list
 				params2 = [par for sublist in zip(amps2_list, centers2_list, widths2_list)
@@ -1006,8 +1043,9 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model2 = model2[chans_ind]
 
-				redchisq2 = round(red_chisq(chans_spec, chans_model2, err=errs2, 
-					free_params=free_params),4)
+				redchisq2 = round(red_chisq(chans_spec, chans_model2, err=rms, 
+					free_params=free_params),3)
+				
 
 				# option to print out fits
 				if (save_fits != False) & (count % save_fits == 0):						
@@ -1036,7 +1074,7 @@ def FitRoutine(FittingInfo, cube):
 					e2.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 	      					'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 	      					'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n' %
-							(i, j, redchisq2, errs2,
+							(i, j, redchisq2, rms,
 							err_params2[0], err_params2[3], err_params2[6], err_params2[9], err_params2[12],
 	     					err_params2[15], err_params2[18], err_params2[21], err_params2[24], err_params2[27],
 						    err_params2[1], err_params2[4], err_params2[7], err_params2[10], err_params2[13],
@@ -1068,9 +1106,8 @@ def FitRoutine(FittingInfo, cube):
 					count+=1
 					continue
 
-				# grab the spectrum
-				spec3 = pyspeckit.Spectrum(data=spectrum, xarr=np.linspace(minval, maxval, 
-											len(spectrum)))
+				# make a spectrum object
+				spec3 = pyspeckit.Spectrum(data=spectrum, xarr=spec_axis,  error=np.ones_like(spec_axis)*rms)
 
 				# perform the fit
 				spec3.specfit.multifit(fittype='gaussian',
@@ -1080,21 +1117,29 @@ def FitRoutine(FittingInfo, cube):
 										tied = ties3,
 										annotate = False)
 				spec3.measure(fluxnorm = fluxnorm)
-				
-				# get errors for the reduced chi square
-				errs3 = compute_rms(spec_axis, spec3, continuum_limits[0], continuum_limits[1])
+
+				if spec3.specfit.parinfo.errors[0] == None:
+						total_guesses3 = params3  # params from previous fits
+
+						spec3.specfit.multifit(fittype='gaussian',
+												guesses = total_guesses3, 
+												limits = total_limits3,
+												limited = limited3,
+												tied = ties3,
+												annotate = False)
+						spec3.measure(fluxnorm = fluxnorm)
 				
 				# get the fit params
 				amps3_list = []
 				centers3_list = []
 				widths3_list = []
 				for line in spec3.measurements.lines.keys():
-					amps3_list.append(round(spec3.measurements.lines[line]['amp']/(fluxnorm),4))
-					centers3_list.append(round(spec3.measurements.lines[line]['pos'],4))
-					widths3_list.append(round(spec3.measurements.lines[line]['fwhm']/2.355,4))
+					amps3_list.append(round(spec3.measurements.lines[line]['amp']/(fluxnorm),3))
+					centers3_list.append(round(spec3.measurements.lines[line]['pos'],3))
+					widths3_list.append(round(spec3.measurements.lines[line]['fwhm']/2.355,3))
 
 				# grab the error on each parameter
-				err_params3 = [round(e,4) for e in spec3.specfit.parinfo.errors]
+				err_params3 = [round(e,3) for e in spec3.specfit.parinfo.errors]
 
 				# save the parameters to a list
 				params3 = [par for sublist in zip(amps3_list, centers3_list, widths3_list)
@@ -1116,8 +1161,8 @@ def FitRoutine(FittingInfo, cube):
 				chans_spec = np.array(spectrum)[chans_ind]
 				chans_model3 = model3[chans_ind]
 
-				redchisq3 = round(red_chisq(chans_spec, chans_model3, err=errs3, 
-					free_params=free_params),4)
+				redchisq3 = round(red_chisq(chans_spec, chans_model3, err=rms, 
+					free_params=free_params),3)
 				
 				# option to print out fits
 				if (save_fits != False) & (count % save_fits == 0):						
@@ -1153,7 +1198,7 @@ def FitRoutine(FittingInfo, cube):
 	      					'%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 							 '%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 							'%s, %s, %s, %s\n' %
-							(i, j, redchisq3, errs3,
+							(i, j, redchisq3, rms,
 							err_params3[0], err_params3[3], err_params3[6], err_params3[9], err_params3[12],
 	     					err_params3[15], err_params3[18], err_params3[21], err_params3[24], err_params3[27],
 						    err_params3[30], err_params3[33], err_params3[36], err_params3[39], err_params3[42],

@@ -68,13 +68,14 @@ def reorder_components1(infile, outfile, infile_err, outfile_err):
 		sigs_params = [sigs_arr[pix][i] for i in sort_index[pix]]
 		ordered_params1 = amps_params + wvl_params + sigs_params  # all sorted params
 
-		# write to a file (saves a TON of time rather than saving to memory)
+		# write to a file
 		f1.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s\n' %
 				 (fits1['X'][pix], fits1['Y'][pix], fits1['RedChiSq'][pix],
 				 ordered_params1[0], ordered_params1[1], ordered_params1[2], ordered_params1[3], ordered_params1[4],
 				 ordered_params1[5], ordered_params1[6], ordered_params1[7], ordered_params1[8], ordered_params1[9],
 				 ordered_params1[10], ordered_params1[11], ordered_params1[12], ordered_params1[13], ordered_params1[14]))
+
 
 	f1.close()
 
@@ -102,18 +103,31 @@ def reorder_components1(infile, outfile, infile_err, outfile_err):
 
 		# for some reason it is an ndarray
 		wvl_params = [wvl_arr[pix][i] for i in sort_index[pix]]
-
 		amps_params = [amps_arr[pix][i] for i in sort_index[pix]]
 		sigs_params = [sigs_arr[pix][i] for i in sort_index[pix]]
 		ordered_params1 = amps_params + wvl_params + sigs_params  # all sorted errors on params
+
+		# print(fits1_err['X'][pix])
+		# print(fits1_err['Y'][pix])
+		# print(fits1_err['RedChiSq'][pix])
+
+		# print(fits1_err['X'])
+		# write to a file
+		# unfortunately, pyspeckit set the errors of tied parameters to 0
+		# we need to have those parameters inherit the error of the parameter they're tied to
+		wvl_errd = ordered_params1[4]
+		sig_errd = ordered_params1[5]
+		nii_amp_errd = ordered_params1[0]
 
 		# write to a file (saves a TON of time rather than saving to memory)
 		e1.write('%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,'
 				'%s, %s, %s, %s, %s\n' %
 				 (fits1_err['X'][pix], fits1_err['Y'][pix], fits1_err['RedChiSq'][pix],
-				ordered_params1[0], ordered_params1[1], ordered_params1[2], ordered_params1[3], ordered_params1[4],
-				 ordered_params1[5], ordered_params1[6], ordered_params1[7], ordered_params1[8], ordered_params1[9],
-				 ordered_params1[10], ordered_params1[11], ordered_params1[12], ordered_params1[13], ordered_params1[14]))
+				 nii_amp_errd, wvl_errd, sig_errd, 
+				 ordered_params1[3], wvl_errd, sig_errd, 
+				 nii_amp_errd, wvl_errd, sig_errd,
+				 ordered_params1[9], wvl_errd, sig_errd, 
+				 ordered_params1[12], wvl_errd, sig_errd))
 
 	e1.close()
 
@@ -134,11 +148,11 @@ def add_velocities1(infile, err_infile, outfile, err_outfile, restwls, Vsys, i):
 	err = pd.read_csv(err_infile, delimiter=',', index_col=False)
 
 	# make velocity columns, accounting for inclination of the disk
-	outputs_ordered['Vel1'] = wavelength_to_velocity(outputs_ordered['Wvl1'], Vsys, restwls[0]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel2'] = wavelength_to_velocity(outputs_ordered['Wvl2'], Vsys, restwls[1]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel3'] = wavelength_to_velocity(outputs_ordered['Wvl3'], Vsys, restwls[2]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel4'] = wavelength_to_velocity(outputs_ordered['Wvl4'], Vsys, restwls[3]) / np.sin(i*np.pi/180)
-	outputs_ordered['Vel5'] = wavelength_to_velocity(outputs_ordered['Wvl5'], Vsys, restwls[4]) / np.sin(i*np.pi/180)
+	outputs_ordered['Vel1'] = wavelength_to_velocity(outputs_ordered['Wvl1'], Vsys, restwls[0])
+	outputs_ordered['Vel2'] = wavelength_to_velocity(outputs_ordered['Wvl2'], Vsys, restwls[1])
+	outputs_ordered['Vel3'] = wavelength_to_velocity(outputs_ordered['Wvl3'], Vsys, restwls[2])
+	outputs_ordered['Vel4'] = wavelength_to_velocity(outputs_ordered['Wvl4'], Vsys, restwls[3])
+	outputs_ordered['Vel5'] = wavelength_to_velocity(outputs_ordered['Wvl5'], Vsys, restwls[4])
 
 	# make columns for sigma in velocity space
 	outputs_ordered['SigVel1'] = (3*10**5 * outputs_ordered['Sig1']) / restwls[0]
@@ -172,15 +186,17 @@ def add_velocities1(infile, err_infile, outfile, err_outfile, restwls, Vsys, i):
 	return
 
 
-def true_errors(infile, err_infile, outfile, err_outfile):
+def add_rms(which_cube, infile, err_infile, outfile, err_outfile):
 	"""
-	This function calculates the true errors by multiplying what we get from
-	the fitting program by the rms of the cube.
+	This function calculates the rms.
 	"""
 
-	print('Calculating true errors....')
+	print('Calculating rms....')
 
-	filename = '../ngc253/data/ADP.2018-11-22T21_29_46.157.fits'
+	if which_cube == 'se':
+		filename = '../ngc253/muse/data/ADP.2018-11-22T21_29_46.157.fits'
+	elif which_cube == 'nw':
+		filename = '../ngc253/muse/data/ADP.2019-08-24T09_53_08.548.fits'
 	infile = pd.read_csv(infile, delimiter=',', index_col=False)
 	err_infile = pd.read_csv(err_infile, delimiter=',', index_col=False)
 
@@ -214,18 +230,85 @@ def true_errors(infile, err_infile, outfile, err_outfile):
 
 	# add the rms to the parameter file and error file
 	infile['rms'] = rms_list
-	err_infile['rms'] = rms_list
-
-	# multiply the errors by the rms
-	err_infile.iloc[:,3:-1].multiply(err_infile['rms'], axis="index")
-
-	# err_infile.iloc[:,3:-1] = err_infile.iloc[:,3:-1]*rms_list
+	err_infile['rms'] = rms_list 
 
 	# save to file
 	err_infile.to_csv(err_outfile, index=False)
 	infile.to_csv(outfile, index=False)
 
 	return
+
+
+def calc_BIC(infile, num_obs, free_params):
+    
+	print('Calculating the BIC values....')
+	
+	fits = pd.read_csv(infile)
+	DOF = num_obs - free_params  # number of observed points - free parameters
+	chisq = fits['RedChiSq'] * DOF
+	BIC = chisq + free_params*np.log(num_obs)
+	fits['BIC'] = BIC
+	fits.to_csv(infile, index=False)
+	
+	return fits
+
+# def true_errors(which_cube, infile, err_infile, outfile, err_outfile):
+# 	"""
+# 	This function calculates the true errors by multiplying what we get from
+# 	the fitting program by the rms of the cube.
+# 	"""
+
+# 	print('Calculating true errors....')
+
+# 	if which_cube == 'se':
+# 		filename = '../ngc253/muse/data/ADP.2018-11-22T21_29_46.157.fits'
+# 	elif which_cube == 'nw':
+# 		filename = '../ngc253/muse/data/ADP.2019-08-24T09_53_08.548.fits'
+# 	infile = pd.read_csv(infile, delimiter=',', index_col=False)
+# 	err_infile = pd.read_csv(err_infile, delimiter=',', index_col=False)
+
+# 	# info for continuum
+# 	SlabLower = 6500
+# 	SlabUpper = 6800
+# 	ContUpper1 = 6620
+# 	ContLower1 = 6525
+# 	ContUpper2 = 6750
+# 	ContLower2 = 6700
+
+# 	cube = CreateCube(filename, SlabLower, SlabUpper, ContLower1, ContUpper1,
+# 					ContLower2, ContUpper2)
+
+# 	z, y, x = cube.shape
+
+# 	minval = min(np.array(cube.spectral_axis))
+# 	maxval = max(np.array(cube.spectral_axis))
+
+# 	rms_list = []
+
+# 	for index, row in tqdm(infile.iterrows()):
+
+# 		i = int(row['X'])
+# 		j = int(row['Y'])
+
+# 		spectrum = np.array(cube[:,j,i], dtype='float64')
+# 		x_axis = np.linspace(minval, maxval, len(spectrum))
+# 		rms = compute_rms(x_axis, spectrum, ContLower1, ContUpper2)
+# 		rms_list.append(rms)
+
+# 	# add the rms to the parameter file and error file
+# 	infile['rms'] = rms_list
+# 	err_infile['rms'] = rms_list 
+
+# 	# multiply the errors by the rms
+# 	err_infile.iloc[:,3:-1].multiply(err_infile['rms'], axis="index")
+
+# 	# err_infile.iloc[:,3:-1] = err_infile.iloc[:,3:-1]*rms_list
+
+# 	# save to file
+# 	err_infile.to_csv(err_outfile, index=False)
+# 	infile.to_csv(outfile, index=False)
+
+# 	return
 
 
 
